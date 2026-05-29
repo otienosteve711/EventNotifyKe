@@ -52,14 +52,19 @@ fun NavGraph(navController: NavHostController) {
             PostEventScreen(navController = navController)
         }
 
-        // reminders screen
-        composable(route = Screen.Reminders.route) {
-            ReminderScreen(navController = navController)
-        }
+
 
         // profile screen
         composable(route = Screen.Profile.route) {
             ProfileScreen(navController = navController)
+        }
+
+        composable(route = Screen.Browse.route) {
+            BrowseScreen(navController = navController)
+        }
+
+        composable(route = Screen.MyEvents.route) {
+            MyEventsScreen(navController = navController)
         }
 
     }
