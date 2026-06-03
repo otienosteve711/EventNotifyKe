@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.sc.eventnotifyke" />
+                  <option name="mobileSdkAppId" value="1:439955245773:android:32f00f3d22eae8f542f784" />
+                  <option name="projectId" value="eventnotifyke" />
+                  <option name="projectNumber" value="439955245773" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
