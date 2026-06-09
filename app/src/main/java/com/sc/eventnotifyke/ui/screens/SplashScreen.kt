@@ -12,6 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,13 +23,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.sc.eventnotifyke.navigation.Screen
+import com.sc.eventnotifyke.viewmodel.AuthViewModel
+import com.sc.eventnotifyke.viewmodel.AuthState
 import kotlinx.coroutines.delay
 
 @Composable
-fun SplashScreen(navController: NavController) {
+fun SplashScreen(navController: NavController, authViewModel: AuthViewModel = viewModel()) {
 
     // Custom Luxury Palette derived from your hex preference
     val baseCanvasColor = Color(0xFF0F1818)    // 👈 Your exact color choice
@@ -36,8 +41,12 @@ fun SplashScreen(navController: NavController) {
     // Animating the logo scale with a bouncy spring effect
     val scale = remember { Animatable(initialValue = 0f) }
 
-    // LaunchedEffect to control splash screen duration
-    LaunchedEffect(key1 = Unit) {
+    // Collect the authentication state reactively from the shared ViewModel
+    val authState by authViewModel.authState.collectAsState()
+
+    // LaunchedEffect to control splash screen duration and handle reactive routing
+    LaunchedEffect(key1 = authState) {
+        // Run the visual entrance animation instantly on component launch
         scale.animateTo(
             targetValue = 1f,
             animationSpec = spring(
@@ -45,13 +54,27 @@ fun SplashScreen(navController: NavController) {
                 stiffness = Spring.StiffnessLow
             )
         )
-        delay(timeMillis = 2000L) // Splash screen lasts 2 seconds
 
-        // Navigate to log in after delay
-        navController.navigate(Screen.Login.route) {
-            // Remove splash from back stack so user cannot navigate back to splash
-            popUpTo(Screen.Splash.route) {
-                inclusive = true
+        // Hold the splash screen visibility for a brief aesthetic duration (2 seconds)
+        delay(timeMillis = 2000L)
+
+        // Evaluate user auth configuration right from the background flow
+        when (authState) {
+            is AuthState.Success -> {
+                // Persistent user session detected, hop right over the auth checkpoint
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
+            is AuthState.Loading -> {
+                // If Firebase is still resolving the initial session loop, wait for completion
+                return@LaunchedEffect
+            }
+            else -> {
+                // No active user detected (Idle, Error, or Logout), route cleanly to sign in form
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
             }
         }
     }

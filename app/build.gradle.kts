@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+
 }
 
 android {
@@ -56,7 +57,8 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-storage-ktx:21.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
-    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
 
 
     testImplementation(libs.junit)
