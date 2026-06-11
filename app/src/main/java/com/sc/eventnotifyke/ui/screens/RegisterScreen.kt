@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -80,7 +81,7 @@ val zoneSubtext = mapOf(
     "Dagoretti" to "Ngong Rd, Kawangware, Riruta, Satellite"
 )
 
-
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel = viewModel()){
     // Form state variables matching your attributes
@@ -100,6 +101,13 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel = 
 
     // Combining local matching verification checks and backend errors cleanly
     val displayErrorMessage = localValidationError ?: (authState as? AuthState.Error)?.message
+
+    // AUTOMATIC SAFETY NET: Wipes state when leaving via hardware gesture loops
+    DisposableEffect(Unit) {
+        onDispose {
+            authViewModel.resetState()
+        }
+    }
 
     // Navigation on registration success
     LaunchedEffect(authState) {
@@ -234,7 +242,7 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel = 
                 label = { Text("Password") },
                 leadingIcon = { Icon(Icons.Default.Lock, null) },
                 trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }, enabled = !isLoading) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             null
@@ -259,7 +267,7 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel = 
                 label = { Text("Confirm Password") },
                 leadingIcon = { Icon(Icons.Default.Lock, null) },
                 trailingIcon = {
-                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }, enabled = !isLoading) {
                         Icon(
                             if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             null
@@ -284,12 +292,13 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel = 
                 )
                 Spacer(Modifier.height(8.dp))
             } else {
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(28.dp)) // Managed layout spacing flawlessly using Modifier
             }
 
             // Lecturer-compliant Submit Action Button
             Button(
                 onClick = {
+                    authViewModel.resetState() // 👈 MANUAL STATE CLEAN ON BUTTON CLICK BLOCK
                     if (password != confirmPassword) {
                         localValidationError = "Passwords do not match!"
                     } else {
@@ -330,7 +339,7 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel = 
             // Redirection linkage navigation
             TextButton(
                 onClick = {
-                    authViewModel.resetState()
+                    authViewModel.resetState() // 👈 MANUAL STATE CLEAN ON REDIRECTION CLICK BLOCK
                     navController.popBackStack()
                 },
                 modifier = Modifier.align(Alignment.CenterHorizontally),

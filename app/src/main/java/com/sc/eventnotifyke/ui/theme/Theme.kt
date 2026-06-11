@@ -9,21 +9,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = BrandPrimaryTeal,
-    secondary = BrandPrimaryTeal,
+    primary = BrandPrimaryGreen,                             // 👈 Updated to Green
+    secondary = BrandPrimaryGreen,                           // 👈 Updated to Green
     tertiary = Pink80,
-    primaryContainer = BrandPrimaryTeal.copy(alpha = 0.2f),
-    onPrimaryContainer = BrandPrimaryTeal,
-    onSurfaceVariant = BrandPrimaryTeal
+    primaryContainer = BrandPrimaryGreen.copy(alpha = 0.2f), // 👈 Updated to Green
+    onPrimaryContainer = BrandPrimaryGreen,                  // 👈 Updated to Green
+    onSurfaceVariant = BrandPrimaryGreen                     // 👈 Updated to Green
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = BrandPrimaryTeal,            // Active borders, primary button backgrounds
-    onPrimary = Color.White,               // Button text colors
-    secondary = BrandPrimaryTeal,          // Replaces PurpleGrey40 so links are Teal!
-    primaryContainer = BrandPrimaryTeal.copy(alpha = 0.15f), // Zone chip backgrounds
-    onPrimaryContainer = BrandPrimaryTeal, // Zone chip active text highlights
-    onSurfaceVariant = BrandPrimaryTeal,   // Focused vector graphics input field icons
+    primary = BrandPrimaryGreen,                             // Active borders, primary button backgrounds
+    onPrimary = Color.White,                                 // Button text colors
+    secondary = BrandPrimaryGreen,                           // Replaces PurpleGrey40 so links are Green!
+    primaryContainer = BrandPrimaryGreen.copy(alpha = 0.15f), // Zone chip backgrounds
+    onPrimaryContainer = BrandPrimaryGreen,                  // Zone chip active text highlights
+    onSurfaceVariant = BrandPrimaryGreen,                    // Focused vector graphics input field icons
     tertiary = Pink40
 )
 

@@ -35,6 +35,13 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel = vie
     val isLoading = authState is AuthState.Loading
     val errorMessage = (authState as? AuthState.Error)?.message
 
+    // AUTOMATIC SAFETY NET: Wipes state when the user leaves via physical system back swipe gesture
+    DisposableEffect(Unit) {
+        onDispose {
+            authViewModel.resetState()
+        }
+    }
+
     // when a user logins successfully take to the dashboard
     LaunchedEffect(authState) {
         if (authState is AuthState.Success){
@@ -80,7 +87,8 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel = vie
                 ),
                 singleLine = true,
                 modifier= Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading // Lock field while querying Firebase
             )
             Spacer(modifier =Modifier.height(12.dp))
 
@@ -96,24 +104,29 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel = vie
                     null
                 )},
                 trailingIcon = {
-                    IconButton(onClick = {
-                        passwordVisible = !passwordVisible
-                    }) {
+                    IconButton(
+                        onClick = { passwordVisible = !passwordVisible },
+                        enabled = !isLoading
+                    ) {
                         Icon(if(passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,null)
                     }
                 },
-                visualTransformation = if(passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
+                visualTransformation = if(passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password
+                ),
+                enabled = !isLoading // Lock field while querying Firebase
             )
             Spacer(modifier = Modifier.height(8.dp))
 
             // link to forgot password screen
             TextButton(
                 onClick = {
-                    navController.navigate(
-                        Screen.ForgotPassword.route
-                    )
+                    authViewModel.resetState() //  MANUAL STATE CLEAN ON BUTTON CLICK
+                    navController.navigate(Screen.ForgotPassword.route)
                 },
-                modifier = Modifier.align(Alignment.End)
+                modifier = Modifier.align(Alignment.End),
+                enabled = !isLoading
             ) {
                 Text("Forgot Password",
                     color= MaterialTheme.colorScheme.primary)
@@ -132,6 +145,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel = vie
 
             Button(
                 onClick = {
+                    authViewModel.resetState() // 👈 MANUAL STATE CLEAN ON BUTTON CLICK
                     authViewModel.Login(email.trim(), password.trim())
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -154,12 +168,11 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel = vie
             // To link to the register string
             TextButton(
                 onClick = {
-                    authViewModel.resetState() // Replaces missing clearState() to cleanly route over
-                    navController.navigate(
-                        Screen.Register.route // Adjusted matching your screen route mapping pattern
-                    )
+                    authViewModel.resetState() // 👈 MANUAL STATE CLEAN ON BUTTON CLICK
+                    navController.navigate(Screen.Register.route)
                 },
-                modifier = Modifier.align(Alignment.End)
+                modifier = Modifier.align(Alignment.End),
+                enabled = !isLoading
             ) {
                 Text("Don't have an account? Register",
                     color= MaterialTheme.colorScheme.primary)

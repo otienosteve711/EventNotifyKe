@@ -86,7 +86,7 @@ fun SplashScreen(navController: NavController, authViewModel: AuthViewModel = vi
             // Using the premium vertical gradient to match the Login Screen canvas exactly
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF070B0B), baseCanvasColor)
+                    colors = listOf(Color(0xFF021715), baseCanvasColor)
                 )
             ),
         contentAlignment = Alignment.Center
