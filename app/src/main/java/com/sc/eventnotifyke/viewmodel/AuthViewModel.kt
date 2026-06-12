@@ -74,6 +74,8 @@ class AuthViewModel : ViewModel(){
                     .document(uid)
                     .set(profile.toMap())
                     .await()
+                auth.signOut()
+
                 _currentProfile.value = profile
                 _authState.value = AuthState.Success(profile)
             }catch (e: Exception){
