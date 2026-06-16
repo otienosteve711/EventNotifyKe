@@ -6,14 +6,16 @@ data class EventItem(
     val id: String = "",
     val title: String = "",
     val description: String = "",
-    val date: String = "",          // e.g., "2026-06-18"
-    val time: String = "",          // e.g., "09:00"
-    val venue: String = "",         // e.g., "KICC"
-    val neighborhood: String = "",  // e.g., "CBD", "Westlands"
-    val category: String = "",      // e.g., "Tech", "Nightlife"
-    val imageUrl: String = "",      // Flyer link
-    val ticketPrice: Int = 0,       // 0 for Free Entry
-    val status: String = "active"
+    val date: String = "",
+    val time: String = "",
+    val venue: String = "",
+    val neighborhood: String = "",
+    val category: String = "",
+    val imageUrl: String = "",
+    val ticketPrice: Int = 0,
+    val status: String = "active",
+    val postedBy: String = "",       // UID of admin who posted
+    val createdAt: Long = 0L         // System.currentTimeMillis() — for sorting
 ) {
     fun toMap(): Map<String, Any> = mapOf(
         "id" to id,
@@ -26,10 +28,18 @@ data class EventItem(
         "category" to category,
         "imageUrl" to imageUrl,
         "ticketPrice" to ticketPrice,
-        "status" to status
+        "status" to status,
+        "postedBy" to postedBy,
+        "createdAt" to createdAt
     )
 
+    // Derived helpers
     fun eventStatus(): EventStatus =
         if (status == "cancelled") EventStatus.CANCELLED else EventStatus.ACTIVE
+
+    fun isFree(): Boolean = ticketPrice == 0
+
+    fun formattedPrice(): String =
+        if (isFree()) "Free Entry" else "KES $ticketPrice"
 }
 
