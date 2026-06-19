@@ -152,4 +152,5 @@ class AuthViewModel : ViewModel(){
     fun resetState() {
         _authState.value = AuthState.Idle
     }
+
 }
