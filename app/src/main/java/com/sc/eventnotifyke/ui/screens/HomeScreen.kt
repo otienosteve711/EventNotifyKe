@@ -1,5 +1,7 @@
 package com.sc.eventnotifyke.ui.screens
 
+
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,6 +30,17 @@ import com.sc.eventnotifyke.viewmodel.AuthViewModel
 import com.sc.eventnotifyke.viewmodel.EventState
 import com.sc.eventnotifyke.viewmodel.EventViewModel
 
+// ─── Zone → Neighborhoods mapping ────────────────────────────────────────────
+
+val zoneNeighborhoods = mapOf(
+    "Nairobi CBD"   to listOf("All", "Town", "Down Town", "Ngara"),
+    "Nairobi East"  to listOf("All", "Umoja", "Kayole", "Pipeline", "Donholm", "Embakasi"),
+    "Nairobi West"  to listOf("All", "Lang'ata", "Karen", "Madaraka", "Kibera", "South C"),
+    "Westlands"     to listOf("All", "Kilimani", "Kileleshwa", "Lavington", "Parklands"),
+    "Nairobi North" to listOf("All", "Kasarani", "Roysambu", "Githurai", "Zimmerman"),
+    "Dagoretti"     to listOf("All", "Ngong Rd", "Kawangware", "Riruta", "Satellite")
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -38,6 +51,12 @@ fun HomeScreen(
     // --- auth state ---
     val profile by authViewModel.currentProfile.collectAsState()
     val isAdmin = profile?.role == "admin"
+
+    // --- get user's zone from profile ---
+    val userZone = profile?.estate ?: ""
+
+    // --- neighborhoods belonging to user's zone ---
+    val neighborhoods = zoneNeighborhoods[userZone] ?: listOf("All")
 
     // --- event state ---
     val eventState by eventViewModel.eventState.collectAsState()
@@ -56,24 +75,27 @@ fun HomeScreen(
         else allEvents.filter { it.title.contains(searchQuery, ignoreCase = true) }
     }
 
-    val neighborhoods = listOf(
-        "All", "Nairobi CBD", "Nairobi East", "Nairobi West",
-        "Westlands", "Nairobi North", "Dagoretti"
-    )
-
     val categories = listOf(
         "All", "Music", "Sports", "Food", "Church",
         "Community", "Arts", "Business", "Education"
     )
 
-    // --- load events on first launch ---
-    LaunchedEffect(Unit) {
+    // --- load events filtered by user's zone on first launch ---
+    LaunchedEffect(userZone) {
+        eventViewModel.setNeighborhoodFilter(userZone)
         eventViewModel.loadActiveEvents()
     }
 
-    // --- update viewmodel filters when chips change ---
-    LaunchedEffect(selectedNeighborhood, selectedCategory) {
-        eventViewModel.setNeighborhoodFilter(selectedNeighborhood)
+    // --- update neighborhood filter when chip changes ---
+    LaunchedEffect(selectedNeighborhood) {
+        eventViewModel.setNeighborhoodFilter(
+            if (selectedNeighborhood == "All") userZone
+            else selectedNeighborhood
+        )
+    }
+
+    // --- update category filter when chip changes ---
+    LaunchedEffect(selectedCategory) {
         eventViewModel.setCategoryFilter(selectedCategory)
     }
 
@@ -131,7 +153,6 @@ fun HomeScreen(
             )
         },
         bottomBar = {
-            // mimic lecture pattern - hardcode currentRoute per screen
             AppBottomBar(
                 currentRoute = "home",
                 onHomeClick = {},
@@ -171,13 +192,24 @@ fun HomeScreen(
 
             // --- greeting ---
             profile?.let {
-                Text(
-                    text = "Hey ${it.fullname.split(" ").first()} 👋",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                Column(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                ) {
+                    Text(
+                        text = "Hey ${it.fullname.split(" ").first()} 👋",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = if (selectedNeighborhood == "All")
+                            "Explore events in $userZone"
+                        else
+                            "Explore events in $selectedNeighborhood",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             // --- neighborhood filter chips ---
@@ -240,7 +272,28 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // --- events count header ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Upcoming Events",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = "${displayedEvents.size} found",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             // --- events feed ---
             when {
@@ -260,11 +313,26 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "No events found in this area.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "🎉",
+                                style = MaterialTheme.typography.displaySmall
+                            )
+                            Text(
+                                text = "No events in this area yet.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Check back soon or explore other zones.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
@@ -279,7 +347,6 @@ fun HomeScreen(
                                 event = event,
                                 onClick = {
                                     navController.navigate("event_detail/${event.id}")
-
                                 }
                             )
                         }
