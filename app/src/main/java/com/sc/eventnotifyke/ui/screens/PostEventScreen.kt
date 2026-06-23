@@ -132,8 +132,11 @@ fun PostEventScreen(
     }
 
     // ── Navigate back on success ──────────────────────────────────────────────
-    LaunchedEffect(eventState) {
-        if (eventState is EventState.Success) {
+    // ── Navigate back only after an actual post/edit, not a background reload ──
+    val postSuccess by eventViewModel.postSuccess.collectAsState()
+    LaunchedEffect(postSuccess) {
+        if (postSuccess) {
+            eventViewModel.resetPostSuccess()
             eventViewModel.clearState()
             eventViewModel.resetFormFields()
             navController.popBackStack()

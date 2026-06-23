@@ -20,14 +20,13 @@ import com.sc.eventnotifyke.viewmodel.AuthViewModel
 
 @Composable
 fun ProfileScreen(
-    viewModel: AuthViewModel = viewModel(),
-    navController: NavController
+    navController: NavController,
+    authViewModel: AuthViewModel = viewModel()  // renamed from viewModel → authViewModel
 ) {
-    // Ensure the Column fills the maximum available size
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center, // Centers items vertically
-        horizontalAlignment = Alignment.CenterHorizontally // Centers items horizontally
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = "User Profile")
 
@@ -35,7 +34,7 @@ fun ProfileScreen(
 
         Button(
             onClick = {
-                viewModel.logout()
+                authViewModel.logout()  // updated reference here too
                 navController.navigate(Screen.Login.route) {
                     popUpTo(0) { inclusive = true }
                 }

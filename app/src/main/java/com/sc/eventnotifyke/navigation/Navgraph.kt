@@ -1,71 +1,65 @@
 package com.sc.eventnotifyke.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.sc.eventnotifyke.ui.screens.*
+import com.sc.eventnotifyke.viewmodel.AuthViewModel
+import com.sc.eventnotifyke.viewmodel.EventViewModel
 
 
 @Composable
 fun NavGraph(navController: NavHostController) {
 
-    // NavHost defines the navigation graph
-    // startDestination is the first screen shown
+    // ── Shared ViewModels — single instance across all screens ───────────────
+    val authViewModel: AuthViewModel = viewModel()
+    val eventViewModel: EventViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
     ) {
 
-        // splash screen
         composable(route = Screen.Splash.route) {
             SplashScreen(navController = navController)
         }
 
-        // login screen
         composable(route = Screen.Login.route) {
-            LoginScreen(navController = navController)
+            LoginScreen(navController = navController, authViewModel = authViewModel)
         }
 
-        // register screen
         composable(route = Screen.Register.route) {
-            RegisterScreen(navController = navController)
+            RegisterScreen(navController = navController, authViewModel = authViewModel)
         }
 
-        // forgot password screen
         composable(route = Screen.ForgotPassword.route) {
-            ForgotPasswordScreen(navController = navController)
+            ForgotPasswordScreen(navController = navController, authViewModel = authViewModel)
         }
 
-        // home screen
         composable(route = Screen.Home.route) {
-            HomeScreen(navController = navController)
+            HomeScreen(navController = navController, authViewModel = authViewModel, eventViewModel = eventViewModel)
         }
 
-        // event detail screen
         composable(route = Screen.EventDetail.route) {
-            EventDetailScreen(navController = navController)
+            EventDetailScreen(navController = navController, eventViewModel = eventViewModel)
         }
 
-        // post event screen
         composable(route = Screen.PostEvent.route) {
-            PostEventScreen(navController = navController)
+            PostEventScreen(navController = navController, authViewModel = authViewModel, eventViewModel = eventViewModel)
         }
 
-
-
-        // profile screen
         composable(route = Screen.Profile.route) {
-            ProfileScreen(navController = navController)
+            ProfileScreen(navController = navController, authViewModel = authViewModel)
         }
 
         composable(route = Screen.Browse.route) {
-            BrowseScreen(navController = navController)
+            BrowseScreen(navController = navController, eventViewModel = eventViewModel)
         }
 
         composable(route = Screen.MyEvents.route) {
-            MyEventsScreen(navController = navController)
+            MyEventsScreen(navController = navController, eventViewModel = eventViewModel)
         }
-
     }
 }

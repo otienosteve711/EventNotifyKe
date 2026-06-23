@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -50,7 +52,8 @@ fun HomeScreen(
     // ── Event state ───────────────────────────────────────────────────────────
     val eventState by eventViewModel.eventState.collectAsState()
     val isLoading  = eventState is EventState.Loading
-    val allEvents  = eventViewModel.filteredEvents()
+    // The UI will now automatically redraw whenever filters change
+    val displayedEvents by eventViewModel.filteredEvents.collectAsState()
 
     // ── Local UI state ────────────────────────────────────────────────────────
     var selectedNeighborhood by remember { mutableStateOf("All") }
@@ -59,10 +62,7 @@ fun HomeScreen(
     var showSearch           by remember { mutableStateOf(false) }
 
     // ── Apply search filter locally ───────────────────────────────────────────
-    val displayedEvents = remember(allEvents, searchQuery) {
-        if (searchQuery.isBlank()) allEvents
-        else allEvents.filter { it.title.contains(searchQuery, ignoreCase = true) }
-    }
+
 
     val categories = listOf(
         "All", "Music", "Sports", "Food", "Church",
@@ -71,21 +71,23 @@ fun HomeScreen(
 
     // ── Set zone filter + load on first launch ────────────────────────────────
     LaunchedEffect(userZone) {
-        eventViewModel.setNeighborhoodFilter(userZone)
-        eventViewModel.loadActiveEvents()
+        if (userZone.isNotEmpty()) {
+            eventViewModel.setUserZone(userZone)
+        }
     }
 
     // ── Re-fetch every time HomeScreen resumes (e.g. after posting an event) ──
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
-        eventViewModel.loadActiveEvents()
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            eventViewModel.loadActiveEvents()
+        }
     }
 
     // ── Update neighborhood filter when chip changes ───────────────────────────
     LaunchedEffect(selectedNeighborhood) {
         eventViewModel.setNeighborhoodFilter(
-            if (selectedNeighborhood == "All") userZone
-            else selectedNeighborhood
+            selectedNeighborhood
         )
     }
 

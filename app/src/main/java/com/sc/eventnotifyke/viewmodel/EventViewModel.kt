@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import com.sc.eventnotifyke.utils.zoneNeighborhoods
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -41,6 +45,10 @@ class EventViewModel : ViewModel() {
 
     private val _selectedEvent = MutableStateFlow<EventItem?>(null)
     val selectedEvent: StateFlow<EventItem?> = _selectedEvent
+    private val _postSuccess = MutableStateFlow(false)
+    private val _userZone = MutableStateFlow<String?>(null)
+
+    val postSuccess: StateFlow<Boolean> = _postSuccess
 
     // ── Post/Edit Form State ──────────────────────────────────────────────────
 
@@ -183,6 +191,7 @@ class EventViewModel : ViewModel() {
                 db.collection("events").document(docRef.id).update("id", docRef.id).await()
 
                 _eventState.value = EventState.Success
+                _postSuccess.value=true
 
             } catch (e: Exception) {
                 _eventState.value = EventState.Error(e.message ?: "Failed to post event")
@@ -225,6 +234,7 @@ class EventViewModel : ViewModel() {
                 db.collection("events").document(eventId).update(updatedFields).await()
 
                 _eventState.value = EventState.Success
+                _postSuccess.value = true
 
             } catch (e: Exception) {
                 _eventState.value = EventState.Error(e.message ?: "Failed to update event")
@@ -258,26 +268,50 @@ class EventViewModel : ViewModel() {
     fun setNeighborhoodFilter(neighborhood: String) {
         _selectedNeighborhood.value = neighborhood
     }
+    fun setUserZone(zone: String) {
+        _userZone.value = zone }
+
+
 
     fun setCategoryFilter(category: String) {
         _selectedCategory.value = category
     }
 
-    fun filteredEvents(): List<EventItem> {
-        return _activeEvents.value.filter { event ->
-            val neighborhoodMatch = _selectedNeighborhood.value == "All" ||
-                    event.neighborhood == _selectedNeighborhood.value
-            val categoryMatch = _selectedCategory.value == "All" ||
-                    event.category == _selectedCategory.value
+    // 3. Now the combine block can see everything correctly
+    val filteredEvents: StateFlow<List<EventItem>> = combine(
+        _activeEvents,
+        _selectedNeighborhood,
+        _selectedCategory,
+        _userZone // This should be set when the user logs in
+    ) { events, neighborhood, category, userZone ->
+
+        // Determine the list of neighborhoods allowed in the current zone
+        val allowedNeighborhoods = zoneNeighborhoods[userZone] ?: emptyList()
+
+        events.filter { event ->
+            // Neighborhood logic
+            val neighborhoodMatch = when (neighborhood) {
+                "All" -> event.neighborhood in allowedNeighborhoods
+                else -> event.neighborhood == neighborhood
+            }
+
+            // Category logic
+            val categoryMatch = category == "All" || event.category == category
+
             neighborhoodMatch && categoryMatch
         }
-    }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     // ─── Utility Functions ────────────────────────────────────────────────────
 
     fun clearSelectedEvent() {
         _selectedEvent.value = null
     }
+
 
     fun resetFormFields() {
         title.value = ""
@@ -294,6 +328,9 @@ class EventViewModel : ViewModel() {
 
     fun clearState() {
         _eventState.value = EventState.Idle
+    }
+    fun resetPostSuccess() {
+        _postSuccess.value = false
     }
 
     // ─── Validation ───────────────────────────────────────────────────────────
