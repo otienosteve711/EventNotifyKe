@@ -40,6 +40,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -50,8 +52,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,30 +74,33 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.firebase.Timestamp
 import com.sc.eventnotifyke.ui.theme.appTextFieldColors
 import com.sc.eventnotifyke.utils.zoneNeighborhoods
 import com.sc.eventnotifyke.viewmodel.AuthViewModel
 import com.sc.eventnotifyke.viewmodel.EventState
 import com.sc.eventnotifyke.viewmodel.EventViewModel
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostEventScreen(
     navController: NavController,
-    eventId: String? = null,                        // non-null → edit mode
+    eventId: String? = null,
     authViewModel: AuthViewModel = viewModel(),
     eventViewModel: EventViewModel = viewModel()
 ) {
     val context    = LocalContext.current
     val isEditMode = eventId != null
 
-    // ── Collect ViewModel flows directly (single source of truth) ────────────
+    // ── Collect ViewModel flows ───────────────────────────────────────────────
     val title        by eventViewModel.title.collectAsState()
     val description  by eventViewModel.description.collectAsState()
-    val date         by eventViewModel.date.collectAsState()
+    val date         by eventViewModel.date.collectAsState()      // Timestamp?
     val time         by eventViewModel.time.collectAsState()
     val venue        by eventViewModel.venue.collectAsState()
     val neighborhood by eventViewModel.neighborhood.collectAsState()
+    val vmZone       by eventViewModel.zone.collectAsState()
     val category     by eventViewModel.category.collectAsState()
     val ticketPrice  by eventViewModel.ticketPrice.collectAsState()
     val imageUri     by eventViewModel.selectedImageUri.collectAsState()
@@ -106,8 +113,14 @@ fun PostEventScreen(
 
     val categories = listOf("Music", "Sports", "Food", "Tech", "Arts", "Faith", "Other")
 
-    // ── Zone picker — UI only, not saved to Firestore ─────────────────────────
-    var selectedZone by remember { mutableStateOf("") }
+    // ── Date picker state ─────────────────────────────────────────────────────
+    var showDatePicker  by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = date?.toDate()?.time
+    )
+
+    // ── Zone picker — mirrors ViewModel zone ──────────────────────────────────
+    var selectedZone by remember(vmZone) { mutableStateOf(vmZone) }
 
     // ── Pre-fill fields when editing ──────────────────────────────────────────
     val selectedEvent by eventViewModel.selectedEvent.collectAsState()
@@ -120,19 +133,18 @@ fun PostEventScreen(
         }
     }
 
-    // ── Pre-fill once selectedEvent arrives (covers fallback fetch case) ──────
     LaunchedEffect(selectedEvent) {
         if (isEditMode && selectedEvent != null) {
             eventViewModel.loadEventForEdit(selectedEvent!!)
-            // also restore zone picker so neighborhood chips are visible
-            selectedZone = zoneNeighborhoods.entries
-                .firstOrNull { selectedEvent!!.neighborhood in it.value }
-                ?.key ?: ""
+            selectedZone = selectedEvent!!.zone.ifBlank {
+                zoneNeighborhoods.entries
+                    .firstOrNull { selectedEvent!!.neighborhood in it.value }
+                    ?.key ?: ""
+            }
         }
     }
 
     // ── Navigate back on success ──────────────────────────────────────────────
-    // ── Navigate back only after an actual post/edit, not a background reload ──
     val postSuccess by eventViewModel.postSuccess.collectAsState()
     LaunchedEffect(postSuccess) {
         if (postSuccess) {
@@ -143,10 +155,41 @@ fun PostEventScreen(
         }
     }
 
-    // ── Image picker — writes directly into ViewModel ─────────────────────────
+    // ── Image picker ──────────────────────────────────────────────────────────
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> eventViewModel.selectedImageUri.value = uri }
+
+    // ── Date display label ────────────────────────────────────────────────────
+    val dateLabel = date?.let { ts ->
+        java.text.SimpleDateFormat("EEE, dd MMM yyyy", java.util.Locale.getDefault())
+            .format(ts.toDate())
+    } ?: "Select event date"
+
+    // ── DatePickerDialog ──────────────────────────────────────────────────────
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        // Convert Long millis → Firestore Timestamp
+                        eventViewModel.date.value = Timestamp(Date(millis))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     // ── UI ────────────────────────────────────────────────────────────────────
     Scaffold(
@@ -169,11 +212,11 @@ fun PostEventScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.secondary    // NavyDeep
+                    containerColor = MaterialTheme.colorScheme.secondary
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background               // IceWhite
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
 
         Column(
@@ -189,7 +232,7 @@ fun PostEventScreen(
             errorMessage?.let {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary   // CrimsonPrimary
+                        containerColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -197,11 +240,7 @@ fun PostEventScreen(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.onPrimary)
                         Spacer(Modifier.width(8.dp))
                         Text(it, color = MaterialTheme.colorScheme.onPrimary)
                     }
@@ -231,18 +270,17 @@ fun PostEventScreen(
                         modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
                         Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = null,
+                            Icons.Default.CheckCircle, null,
                             modifier = Modifier.size(36.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             imageUri.toString(),
-                            style    = MaterialTheme.typography.labelSmall,
-                            color    = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
+                            style     = MaterialTheme.typography.labelSmall,
+                            color     = MaterialTheme.colorScheme.onSurface,
+                            maxLines  = 2,
+                            overflow  = TextOverflow.Ellipsis,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -252,10 +290,9 @@ fun PostEventScreen(
                         modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
                         Icon(
-                            Icons.Default.Image,
-                            contentDescription = null,
+                            Icons.Default.Image, null,
                             modifier = Modifier.size(36.dp),
-                            tint = MaterialTheme.colorScheme.tertiary        // AmberAccent
+                            tint = MaterialTheme.colorScheme.tertiary
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -293,21 +330,26 @@ fun PostEventScreen(
                 colors        = appTextFieldColors()
             )
 
-            // ── Date & Time (side by side) ────────────────────────────────────
+            // ── Date (DatePicker) & Time ──────────────────────────────────────
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Tappable read-only date field
                 OutlinedTextField(
-                    value         = date,
-                    onValueChange = { eventViewModel.date.value = it },
+                    value         = dateLabel,
+                    onValueChange = {},
+                    readOnly      = true,
                     label         = { Text("Date") },
-                    placeholder   = { Text("e.g. 12 Jul 2025") },
                     leadingIcon   = { Icon(Icons.Default.CalendarToday, null) },
-                    modifier      = Modifier.weight(1f),
+                    modifier      = Modifier
+                        .weight(1f)
+                        .clickable { showDatePicker = true },
                     shape         = RoundedCornerShape(12.dp),
-                    colors        = appTextFieldColors()
+                    colors        = appTextFieldColors(),
+                    enabled       = false
                 )
+
                 OutlinedTextField(
                     value         = time,
                     onValueChange = { eventViewModel.time.value = it },
@@ -355,8 +397,8 @@ fun PostEventScreen(
                         onClick  = { eventViewModel.category.value = cat },
                         label    = { Text(cat) },
                         colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,   // CrimsonPrimary
-                            selectedLabelColor     = MaterialTheme.colorScheme.onPrimary  // White
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor     = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }
@@ -368,23 +410,24 @@ fun PostEventScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement   = Arrangement.spacedBy(4.dp)
             ) {
-                zoneNeighborhoods.keys.forEach { zone ->
+                zoneNeighborhoods.keys.forEach { z ->
                     FilterChip(
-                        selected = selectedZone == zone,
+                        selected = selectedZone == z,
                         onClick  = {
-                            selectedZone = zone
-                            eventViewModel.neighborhood.value = "" // reset on zone change
+                            selectedZone = z
+                            eventViewModel.zone.value = z
+                            eventViewModel.neighborhood.value = ""
                         },
-                        label  = { Text(zone) },
+                        label  = { Text(z) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.secondary,   // NavyDeep
-                            selectedLabelColor     = MaterialTheme.colorScheme.onSecondary  // White
+                            selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                            selectedLabelColor     = MaterialTheme.colorScheme.onSecondary
                         )
                     )
                 }
             }
 
-            // ── Step 2: Neighborhood chips — shown only after zone is picked ──
+            // ── Step 2: Neighborhood chips ────────────────────────────────────
             if (selectedZone.isNotEmpty()) {
                 SectionLabel("Neighborhood")
                 FlowRow(
@@ -400,9 +443,9 @@ fun PostEventScreen(
                                 { Icon(Icons.Default.Map, null, Modifier.size(14.dp)) }
                             } else null,
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor   = MaterialTheme.colorScheme.primary,    // CrimsonPrimary
-                                selectedLabelColor       = MaterialTheme.colorScheme.onPrimary,  // White
-                                selectedLeadingIconColor = MaterialTheme.colorScheme.tertiary    // AmberAccent
+                                selectedContainerColor   = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor       = MaterialTheme.colorScheme.onPrimary,
+                                selectedLeadingIconColor = MaterialTheme.colorScheme.tertiary
                             )
                         )
                     }
@@ -415,24 +458,28 @@ fun PostEventScreen(
                     LinearProgressIndicator(
                         progress   = { uploadProgress },
                         modifier   = Modifier.fillMaxWidth(),
-                        color      = MaterialTheme.colorScheme.primary,      // CrimsonPrimary
+                        color      = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "Uploading image… ${(uploadProgress * 100).toInt()}%",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary            // AmberAccent
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
 
             // ── Submit button ─────────────────────────────────────────────────
-            val formValid = title.isNotBlank()       && description.isNotBlank() &&
-                    date.isNotBlank()        && time.isNotBlank()        &&
-                    venue.isNotBlank()       && neighborhood.isNotBlank() &&
-                    category.isNotBlank()    &&
-                    (imageUri != null || isEditMode) && !isLoading
+            val formValid = title.isNotBlank()       &&
+                    description.isNotBlank()         &&
+                    date != null                     &&
+                    time.isNotBlank()                &&
+                    venue.isNotBlank()               &&
+                    neighborhood.isNotBlank()        &&
+                    category.isNotBlank()            &&
+                    (imageUri != null || isEditMode) &&
+                    !isLoading
 
             Button(
                 onClick = {
@@ -445,8 +492,8 @@ fun PostEventScreen(
                     .height(52.dp),
                 shape  = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,      // CrimsonPrimary
-                    contentColor   = MaterialTheme.colorScheme.onPrimary     // White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor   = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 if (isLoading) {
@@ -477,6 +524,6 @@ private fun SectionLabel(text: String) {
         text,
         style      = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Bold,
-        color      = MaterialTheme.colorScheme.onBackground                  // NavyDeep
+        color      = MaterialTheme.colorScheme.onBackground
     )
 }

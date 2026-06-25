@@ -400,7 +400,7 @@ fun EventCard(
 
                 // ── Date & time ───────────────────────────────────────────────
                 Text(
-                    text  = "${event.date} • ${event.time}",
+                    text = "${event.formattedDate()} • ${event.time}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
