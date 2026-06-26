@@ -10,7 +10,7 @@ data class EventItem(
     val id           : String    = "",
     val title        : String    = "",
     val description  : String    = "",
-    val date         : Timestamp = Timestamp(0, 0),   // Firestore Timestamp
+    val date         : Timestamp = Timestamp.now(),   // Firestore Timestamp
     val time         : String    = "",
     val venue        : String    = "",
     val neighborhood : String    = "",

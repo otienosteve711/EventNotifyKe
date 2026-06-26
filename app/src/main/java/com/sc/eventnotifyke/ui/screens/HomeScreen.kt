@@ -160,13 +160,13 @@ fun HomeScreen(
         },
         floatingActionButton = {
             if (isAdmin) {
-                FloatingActionButton(
+                ExtendedFloatingActionButton(
                     onClick        = { navController.navigate(Screen.PostEvent.route) },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor   = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Post Event")
-                }
+                    contentColor   = MaterialTheme.colorScheme.onPrimary,
+                    icon           = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text           = { Text("Post Event", fontWeight = FontWeight.SemiBold) }
+                )
             }
         },
         containerColor = MaterialTheme.colorScheme.background
