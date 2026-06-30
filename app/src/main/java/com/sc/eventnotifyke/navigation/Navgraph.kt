@@ -18,7 +18,7 @@ fun NavGraph(navController: NavHostController) {
     val eventViewModel: EventViewModel = viewModel()
 
     NavHost(
-        navController = navController,
+        navController    = navController,
         startDestination = Screen.Splash.route
     ) {
 
@@ -39,15 +39,40 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.Home.route) {
-            HomeScreen(navController = navController, authViewModel = authViewModel, eventViewModel = eventViewModel)
+            HomeScreen(
+                navController  = navController,
+                authViewModel  = authViewModel,
+                eventViewModel = eventViewModel
+            )
         }
 
-        composable(route = Screen.EventDetail.route) {
-            EventDetailScreen(navController = navController, eventViewModel = eventViewModel)
+        composable(route = Screen.EventDetail.route) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+            EventDetailScreen(
+                navController  = navController,
+                eventId        = eventId,
+                eventViewModel = eventViewModel,
+                authViewModel  = authViewModel
+            )
         }
 
         composable(route = Screen.PostEvent.route) {
-            PostEventScreen(navController = navController, authViewModel = authViewModel, eventViewModel = eventViewModel)
+            PostEventScreen(
+                navController  = navController,
+                authViewModel  = authViewModel,
+                eventViewModel = eventViewModel
+            )
+        }
+
+        // EditEvent — reuses PostEventScreen, passing eventId as argument
+        composable(route = Screen.EditEvent.route) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+            PostEventScreen(
+                navController  = navController,
+                authViewModel  = authViewModel,
+                eventViewModel = eventViewModel,
+                eventId        = eventId         // PostEventScreen uses this to load for edit
+            )
         }
 
         composable(route = Screen.Profile.route) {
@@ -59,7 +84,11 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.MyEvents.route) {
-            MyEventsScreen(navController = navController, eventViewModel = eventViewModel)
+            MyEventsScreen(
+                navController  = navController,
+                eventViewModel = eventViewModel,
+                authViewModel  = authViewModel   // added
+            )
         }
     }
 }

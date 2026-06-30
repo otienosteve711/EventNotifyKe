@@ -55,13 +55,15 @@ class EventViewModel : ViewModel() {
 
     val title            = MutableStateFlow("")
     val description      = MutableStateFlow("")
-    val date             = MutableStateFlow<Timestamp?>(null)  // null = not yet picked
+    val date             = MutableStateFlow<Timestamp?>(null)
     val time             = MutableStateFlow("")
     val venue            = MutableStateFlow("")
     val neighborhood     = MutableStateFlow("")
     val zone             = MutableStateFlow("")
     val category         = MutableStateFlow("")
     val ticketPrice      = MutableStateFlow("0")
+    val status           = MutableStateFlow("active")   // ← NEW
+    val statusNote       = MutableStateFlow("")          // ← NEW
     val selectedImageUri = MutableStateFlow<Uri?>(null)
     val existingImageUrl = MutableStateFlow("")
 
@@ -81,25 +83,19 @@ class EventViewModel : ViewModel() {
     private val _selectedCategory = MutableStateFlow("All")
     val selectedCategory: StateFlow<String> = _selectedCategory
 
+    // ── Bookmark State ────────────────────────────────────────────────────────
+
+    private val _bookmarkedEventIds = MutableStateFlow<Set<String>>(emptySet())
+    val bookmarkedEventIds: StateFlow<Set<String>> = _bookmarkedEventIds
+
     // ─── Load Functions ───────────────────────────────────────────────────────
 
-    /**
-     * Loads events visible to users:
-     * - active events whose date >= Timestamp.now() (server-side filter)
-     * - cancelled events — always shown so users know
-     * - postponed events — always shown so users know
-     *
-     * We run two separate Firestore queries and merge the results:
-     * 1. Active + upcoming  → whereEqualTo("status","active") + whereGreaterThanOrEqualTo("date", now)
-     * 2. Cancelled/postponed → whereIn("status", ["cancelled","postponed"])
-     */
     fun loadActiveEvents() {
         viewModelScope.launch {
             _eventState.value = EventState.Loading
             try {
                 val now = Timestamp.now()
 
-                // Query 1: upcoming active events
                 val activeSnapshot = db.collection("events")
                     .whereEqualTo("status", "active")
                     .whereGreaterThanOrEqualTo("date", now)
@@ -111,7 +107,6 @@ class EventViewModel : ViewModel() {
                     doc.toObject(EventItem::class.java)?.copy(id = doc.id)
                 }
 
-                // Query 2: cancelled + postponed events
                 val otherSnapshot = db.collection("events")
                     .whereIn("status", listOf("cancelled", "postponed"))
                     .orderBy("date", Query.Direction.ASCENDING)
@@ -122,7 +117,6 @@ class EventViewModel : ViewModel() {
                     doc.toObject(EventItem::class.java)?.copy(id = doc.id)
                 }
 
-                // Merge and sort by date ascending
                 _activeEvents.value = (activeEvents + otherEvents)
                     .sortedBy { it.date }
 
@@ -181,6 +175,8 @@ class EventViewModel : ViewModel() {
         zone.value             = event.zone
         category.value         = event.category
         ticketPrice.value      = event.ticketPrice.toString()
+        status.value           = event.status        // ← NEW
+        statusNote.value       = event.statusNote    // ← NEW
         existingImageUrl.value = event.imageUrl
     }
 
@@ -191,7 +187,6 @@ class EventViewModel : ViewModel() {
         viewModelScope.launch {
             _eventState.value = EventState.Loading
             try {
-                // 1. Upload image to Cloudinary
                 val imageUrl = selectedImageUri.value?.let { uri ->
                     CloudinaryUploader.uploadImage(
                         context    = context,
@@ -201,7 +196,6 @@ class EventViewModel : ViewModel() {
                     )
                 } ?: ""
 
-                // 2. Build EventItem — date is already a Timestamp
                 val event = EventItem(
                     title        = title.value.trim(),
                     description  = description.value.trim(),
@@ -215,13 +209,9 @@ class EventViewModel : ViewModel() {
                     ticketPrice  = ticketPrice.value.toIntOrNull() ?: 0,
                     status       = "active",
                     postedBy     = uid
-                    // createdAt defaults to Timestamp.now() from EventItem
                 )
 
-                // 3. Save to Firestore
                 val docRef = db.collection("events").add(event.toMap()).await()
-
-                // 4. Write generated ID back into the document
                 db.collection("events").document(docRef.id).update("id", docRef.id).await()
 
                 _postSuccess.value = true
@@ -241,7 +231,6 @@ class EventViewModel : ViewModel() {
         viewModelScope.launch {
             _eventState.value = EventState.Loading
             try {
-                // 1. Upload new image if selected, else keep existing
                 val imageUrl = selectedImageUri.value?.let { uri ->
                     CloudinaryUploader.uploadImage(
                         context    = context,
@@ -251,7 +240,6 @@ class EventViewModel : ViewModel() {
                     )
                 } ?: existingImageUrl.value
 
-                // 2. Build update map
                 val updatedFields = mapOf(
                     "title"        to title.value.trim(),
                     "description"  to description.value.trim(),
@@ -262,10 +250,11 @@ class EventViewModel : ViewModel() {
                     "zone"         to zone.value,
                     "category"     to category.value,
                     "imageUrl"     to imageUrl,
-                    "ticketPrice"  to (ticketPrice.value.toIntOrNull() ?: 0)
+                    "ticketPrice"  to (ticketPrice.value.toIntOrNull() ?: 0),
+                    "status"       to status.value,       // ← NEW
+                    "statusNote"   to statusNote.value    // ← NEW
                 )
 
-                // 3. Update in Firestore
                 db.collection("events").document(eventId).update(updatedFields).await()
 
                 _postSuccess.value = true
@@ -329,6 +318,43 @@ class EventViewModel : ViewModel() {
         }
     }
 
+    // ─── Bookmark Functions ───────────────────────────────────────────────────
+
+    fun loadBookmarks(userId: String) {
+        if (userId.isBlank()) return
+        viewModelScope.launch {
+            db.collection("users")
+                .document(userId)
+                .collection("bookmarks")
+                .addSnapshotListener { snapshot, _ ->
+                    val ids = snapshot?.documents?.map { it.id }?.toSet() ?: emptySet()
+                    _bookmarkedEventIds.value = ids
+                }
+        }
+    }
+
+    fun addBookmark(userId: String, eventId: String) {
+        if (userId.isBlank()) return
+        viewModelScope.launch {
+            db.collection("users")
+                .document(userId)
+                .collection("bookmarks")
+                .document(eventId)
+                .set(mapOf("bookmarkedAt" to Timestamp.now()))
+        }
+    }
+
+    fun removeBookmark(userId: String, eventId: String) {
+        if (userId.isBlank()) return
+        viewModelScope.launch {
+            db.collection("users")
+                .document(userId)
+                .collection("bookmarks")
+                .document(eventId)
+                .delete()
+        }
+    }
+
     // ─── Filter Functions ─────────────────────────────────────────────────────
 
     fun setNeighborhoodFilter(neighborhood: String) {
@@ -383,6 +409,8 @@ class EventViewModel : ViewModel() {
         zone.value             = ""
         category.value         = ""
         ticketPrice.value      = "0"
+        status.value           = "active"   // ← NEW
+        statusNote.value       = ""         // ← NEW
         selectedImageUri.value = null
         existingImageUrl.value = ""
     }

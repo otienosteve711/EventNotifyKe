@@ -5,8 +5,7 @@ import androidx.compose.ui.graphics.Color
 
 
 // Your sharp new vibrant mint-green primary theme color!
-val BrandPrimaryGreen = Color(0xFF1FC46A)
-val brandTealAccent = Color(0xFF00B39F)
+
 val NavyDeep       = Color(0xFF1A1A2E)
 val NavyMid        = Color(0xFF1E1E32)
 val NavyDark       = Color(0xFF0D0D1A)

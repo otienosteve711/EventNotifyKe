@@ -96,13 +96,15 @@ fun PostEventScreen(
     // ── Collect ViewModel flows ───────────────────────────────────────────────
     val title        by eventViewModel.title.collectAsState()
     val description  by eventViewModel.description.collectAsState()
-    val date         by eventViewModel.date.collectAsState()      // Timestamp?
+    val date         by eventViewModel.date.collectAsState()
     val time         by eventViewModel.time.collectAsState()
     val venue        by eventViewModel.venue.collectAsState()
     val neighborhood by eventViewModel.neighborhood.collectAsState()
     val vmZone       by eventViewModel.zone.collectAsState()
     val category     by eventViewModel.category.collectAsState()
     val ticketPrice  by eventViewModel.ticketPrice.collectAsState()
+    val status       by eventViewModel.status.collectAsState()
+    val statusNote   by eventViewModel.statusNote.collectAsState()
     val imageUri     by eventViewModel.selectedImageUri.collectAsState()
 
     val eventState     by eventViewModel.eventState.collectAsState()
@@ -119,7 +121,7 @@ fun PostEventScreen(
         initialSelectedDateMillis = date?.toDate()?.time
     )
 
-    // ── Zone picker — mirrors ViewModel zone ──────────────────────────────────
+    // ── Zone picker ───────────────────────────────────────────────────────────
     var selectedZone by remember(vmZone) { mutableStateOf(vmZone) }
 
     // ── Pre-fill fields when editing ──────────────────────────────────────────
@@ -173,7 +175,6 @@ fun PostEventScreen(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        // Convert Long millis → Firestore Timestamp
                         eventViewModel.date.value = Timestamp(Date(millis))
                     }
                     showDatePicker = false
@@ -330,12 +331,11 @@ fun PostEventScreen(
                 colors        = appTextFieldColors()
             )
 
-            // ── Date (DatePicker) & Time ──────────────────────────────────────
+            // ── Date & Time ───────────────────────────────────────────────────
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Tappable read-only date field
                 OutlinedTextField(
                     value         = dateLabel,
                     onValueChange = {},
@@ -404,7 +404,7 @@ fun PostEventScreen(
                 }
             }
 
-            // ── Step 1: Zone chips ────────────────────────────────────────────
+            // ── Zone chips ────────────────────────────────────────────────────
             SectionLabel("Zone")
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -427,7 +427,7 @@ fun PostEventScreen(
                 }
             }
 
-            // ── Step 2: Neighborhood chips ────────────────────────────────────
+            // ── Neighborhood chips ────────────────────────────────────────────
             if (selectedZone.isNotEmpty()) {
                 SectionLabel("Neighborhood")
                 FlowRow(
@@ -449,6 +449,60 @@ fun PostEventScreen(
                             )
                         )
                     }
+                }
+            }
+
+            // ── Status section (edit mode only) ───────────────────────────────
+            if (isEditMode) {
+                SectionLabel("Event Status")
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement   = Arrangement.spacedBy(4.dp)
+                ) {
+                    listOf("active", "postponed", "cancelled").forEach { s ->
+                        val chipColor = when (s) {
+                            "cancelled" -> MaterialTheme.colorScheme.error
+                            "postponed" -> MaterialTheme.colorScheme.tertiary
+                            else        -> MaterialTheme.colorScheme.primary
+                        }
+                        FilterChip(
+                            selected = status == s,
+                            onClick  = {
+                                eventViewModel.status.value = s
+                                // Clear statusNote when switching back to active
+                                if (s == "active") eventViewModel.statusNote.value = ""
+                            },
+                            label  = { Text(s.replaceFirstChar { it.uppercase() }) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = chipColor,
+                                selectedLabelColor     = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                    }
+                }
+
+                // Reason field — only shown when cancelled or postponed
+                if (status == "cancelled" || status == "postponed") {
+                    OutlinedTextField(
+                        value         = statusNote,
+                        onValueChange = { eventViewModel.statusNote.value = it },
+                        label         = {
+                            Text(
+                                if (status == "cancelled") "Cancellation Reason"
+                                else "Postponement Reason"
+                            )
+                        },
+                        placeholder   = {
+                            Text(
+                                if (status == "cancelled") "e.g. Venue unavailable"
+                                else "e.g. Rescheduled to next week"
+                            )
+                        },
+                        minLines      = 2,
+                        modifier      = Modifier.fillMaxWidth(),
+                        shape         = RoundedCornerShape(12.dp),
+                        colors        = appTextFieldColors()
+                    )
                 }
             }
 

@@ -1,5 +1,6 @@
 package com.sc.eventnotifyke.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,15 +17,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.sc.eventnotifyke.models.EventItem
+import com.sc.eventnotifyke.models.EventStatus
 import com.sc.eventnotifyke.navigation.Screen
 import com.sc.eventnotifyke.ui.components.AppBottomBar
 import com.sc.eventnotifyke.utils.zoneNeighborhoods
@@ -52,7 +56,6 @@ fun HomeScreen(
     // ── Event state ───────────────────────────────────────────────────────────
     val eventState by eventViewModel.eventState.collectAsState()
     val isLoading  = eventState is EventState.Loading
-    // The UI will now automatically redraw whenever filters change
     val displayedEvents by eventViewModel.filteredEvents.collectAsState()
 
     // ── Local UI state ────────────────────────────────────────────────────────
@@ -60,9 +63,6 @@ fun HomeScreen(
     var selectedCategory     by remember { mutableStateOf("All") }
     var searchQuery          by remember { mutableStateOf("") }
     var showSearch           by remember { mutableStateOf(false) }
-
-    // ── Apply search filter locally ───────────────────────────────────────────
-
 
     val categories = listOf(
         "All", "Music", "Sports", "Food", "Church",
@@ -76,7 +76,7 @@ fun HomeScreen(
         }
     }
 
-    // ── Re-fetch every time HomeScreen resumes (e.g. after posting an event) ──
+    // ── Re-fetch every time HomeScreen resumes ────────────────────────────────
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -84,11 +84,9 @@ fun HomeScreen(
         }
     }
 
-    // ── Update neighborhood filter when chip changes ───────────────────────────
+    // ── Update neighborhood filter when chip changes ──────────────────────────
     LaunchedEffect(selectedNeighborhood) {
-        eventViewModel.setNeighborhoodFilter(
-            selectedNeighborhood
-        )
+        eventViewModel.setNeighborhoodFilter(selectedNeighborhood)
     }
 
     // ── Update category filter when chip changes ──────────────────────────────
@@ -102,16 +100,16 @@ fun HomeScreen(
                 title = {
                     if (showSearch) {
                         TextField(
-                            value = searchQuery,
+                            value         = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = {
+                            placeholder   = {
                                 Text(
                                     "Search events...",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             },
                             singleLine = true,
-                            colors = TextFieldDefaults.colors(
+                            colors     = TextFieldDefaults.colors(
                                 focusedContainerColor   = MaterialTheme.colorScheme.surface,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                 focusedTextColor        = MaterialTheme.colorScheme.onBackground,
@@ -124,10 +122,10 @@ fun HomeScreen(
                         )
                     } else {
                         Text(
-                            text = "EventNotify KE",
-                            style = MaterialTheme.typography.titleLarge,
+                            text       = "EventNotify KE",
+                            style      = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color      = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
@@ -137,9 +135,9 @@ fun HomeScreen(
                         if (!showSearch) searchQuery = ""
                     }) {
                         Icon(
-                            imageVector = Icons.Filled.Search,
+                            imageVector        = Icons.Filled.Search,
                             contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint               = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -151,9 +149,9 @@ fun HomeScreen(
         },
         bottomBar = {
             AppBottomBar(
-                currentRoute  = "home",
-                onHomeClick   = {},
-                onBrowseClick = { navController.navigate(Screen.Browse.route) },
+                currentRoute    = "home",
+                onHomeClick     = {},
+                onBrowseClick   = { navController.navigate(Screen.Browse.route) },
                 onMyEventsClick = { navController.navigate(Screen.MyEvents.route) },
                 onProfileClick  = { navController.navigate(Screen.Profile.route) }
             )
@@ -180,17 +178,15 @@ fun HomeScreen(
 
             // ── Greeting ──────────────────────────────────────────────────────
             profile?.let {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(
-                        text = "Hey ${it.fullname.split(" ").first()} 👋",
-                        style = MaterialTheme.typography.titleMedium,
+                        text       = "Hey ${it.fullname.split(" ").first()} 👋",
+                        style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color      = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = if (selectedNeighborhood == "All")
+                        text  = if (selectedNeighborhood == "All")
                             "Explore events in $userZone"
                         else
                             "Explore events in $selectedNeighborhood",
@@ -202,15 +198,15 @@ fun HomeScreen(
 
             // ── Neighborhood filter chips ─────────────────────────────────────
             Text(
-                text = "Neighborhood",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text     = "Neighborhood",
+                style    = MaterialTheme.typography.labelMedium,
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
             LazyRow(
-                contentPadding      = PaddingValues(horizontal = 16.dp),
+                contentPadding        = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier              = Modifier.fillMaxWidth()
             ) {
                 items(neighborhoods) { hood ->
                     FilterChip(
@@ -231,15 +227,15 @@ fun HomeScreen(
 
             // ── Category filter chips ─────────────────────────────────────────
             Text(
-                text = "Category",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text     = "Category",
+                style    = MaterialTheme.typography.labelMedium,
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
             LazyRow(
                 contentPadding        = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier              = Modifier.fillMaxWidth()
             ) {
                 items(categories) { cat ->
                     FilterChip(
@@ -260,20 +256,20 @@ fun HomeScreen(
 
             // ── Events count header ───────────────────────────────────────────
             Row(
-                modifier = Modifier
+                modifier              = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Upcoming Events",
-                    style = MaterialTheme.typography.titleSmall,
+                    text       = "Upcoming Events",
+                    style      = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color      = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "${displayedEvents.size} found",
+                    text  = "${displayedEvents.size} found",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -283,7 +279,7 @@ fun HomeScreen(
             when {
                 isLoading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier         = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -292,17 +288,14 @@ fun HomeScreen(
 
                 displayedEvents.isEmpty() -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier         = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text  = "🎉",
-                                style = MaterialTheme.typography.displaySmall
-                            )
+                            Text(text = "🎉", style = MaterialTheme.typography.displaySmall)
                             Text(
                                 text       = "No events in this area yet.",
                                 style      = MaterialTheme.typography.bodyMedium,
@@ -319,12 +312,20 @@ fun HomeScreen(
                 }
 
                 else -> {
+                    // Apply search filter locally
+                    val filteredBySearch = if (searchQuery.isBlank()) displayedEvents
+                    else displayedEvents.filter {
+                        it.title.contains(searchQuery, ignoreCase = true) ||
+                                it.neighborhood.contains(searchQuery, ignoreCase = true) ||
+                                it.category.contains(searchQuery, ignoreCase = true)
+                    }
+
                     LazyColumn(
-                        contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        verticalArrangement   = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
+                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier            = Modifier.fillMaxSize()
                     ) {
-                        items(displayedEvents) { event ->
+                        items(filteredBySearch) { event ->
                             EventCard(
                                 event   = event,
                                 onClick = {
@@ -348,6 +349,8 @@ fun EventCard(
     event: EventItem,
     onClick: () -> Unit
 ) {
+    val eventStatus = event.eventStatus()
+
     Card(
         modifier  = Modifier
             .fillMaxWidth()
@@ -368,6 +371,34 @@ fun EventCard(
                     .height(180.dp)
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             )
+
+            // ── Status banner (only for cancelled / postponed) ────────────────
+            if (eventStatus != EventStatus.ACTIVE) {
+                val bannerColor = when (eventStatus) {
+                    EventStatus.CANCELLED -> MaterialTheme.colorScheme.error
+                    EventStatus.POSTPONED -> MaterialTheme.colorScheme.tertiary
+                    else                  -> Color.Transparent
+                }
+                val bannerLabel = when (eventStatus) {
+                    EventStatus.CANCELLED -> "⚠ CANCELLED"
+                    EventStatus.POSTPONED -> "🕐 POSTPONED"
+                    else                  -> ""
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(bannerColor)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text          = bannerLabel,
+                        color         = Color.White,
+                        fontWeight    = FontWeight.Bold,
+                        fontSize      = 11.sp,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
 
             Column(modifier = Modifier.padding(12.dp)) {
 
@@ -400,7 +431,7 @@ fun EventCard(
 
                 // ── Date & time ───────────────────────────────────────────────
                 Text(
-                    text = "${event.formattedDate()} • ${event.time}",
+                    text  = "${event.formattedDate()} • ${event.time}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
