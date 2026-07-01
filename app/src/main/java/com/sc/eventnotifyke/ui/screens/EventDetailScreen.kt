@@ -172,6 +172,16 @@ fun EventDetailScreen(
                                 fontSize      = 12.sp,
                                 letterSpacing = 1.5.sp
                             )
+                            // Show the new date explicitly for postponed events,
+                            // so users don't mistake it for the original date
+                            if (eventStatus == EventStatus.POSTPONED) {
+                                Text(
+                                    text       = "Rescheduled to ${event.formattedDate()}",
+                                    color      = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize   = 13.sp
+                                )
+                            }
                             if (event.statusNote.isNotBlank()) {
                                 Text(
                                     text     = event.statusNote,
