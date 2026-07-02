@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -54,11 +53,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -123,14 +120,6 @@ fun PostEventScreen(
     var showDatePicker  by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = date?.toDate()?.time
-    )
-
-    // ── Time picker state ─────────────────────────────────────────────────────
-    var showTimePicker  by remember { mutableStateOf(false) }
-    val timePickerState = rememberTimePickerState(
-        initialHour   = 18,   // default 6 PM — sensible default for evening events
-        initialMinute = 0,
-        is24Hour      = false
     )
 
     // ── Zone picker ───────────────────────────────────────────────────────────
@@ -202,43 +191,6 @@ fun PostEventScreen(
         ) {
             DatePicker(state = datePickerState)
         }
-    }
-
-    // ── TimePickerDialog ──────────────────────────────────────────────────────
-    if (showTimePicker) {
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    val hour24   = timePickerState.hour
-                    val minute   = timePickerState.minute
-                    val amPm     = if (hour24 < 12) "AM" else "PM"
-                    val hour12   = when {
-                        hour24 == 0  -> 12
-                        hour24 > 12  -> hour24 - 12
-                        else         -> hour24
-                    }
-                    val formatted = String.format("%d:%02d %s", hour12, minute, amPm)
-                    eventViewModel.time.value = formatted
-                    showTimePicker = false
-                }) {
-                    Text("OK", color = MaterialTheme.colorScheme.primary)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            },
-            text = {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    TimePicker(state = timePickerState)
-                }
-            }
-        )
     }
 
     // ── UI ────────────────────────────────────────────────────────────────────
@@ -400,17 +352,14 @@ fun PostEventScreen(
                 )
 
                 OutlinedTextField(
-                    value         = time.ifBlank { "Select time" },
-                    onValueChange = {},
-                    readOnly      = true,
+                    value         = time,
+                    onValueChange = { eventViewModel.time.value = it },
                     label         = { Text("Time") },
+                    placeholder   = { Text("e.g. 6:00 PM") },
                     leadingIcon   = { Icon(Icons.Default.Schedule, null) },
-                    modifier      = Modifier
-                        .weight(1f)
-                        .clickable { showTimePicker = true },
+                    modifier      = Modifier.weight(1f),
                     shape         = RoundedCornerShape(12.dp),
-                    colors        = appTextFieldColors(),
-                    enabled       = false
+                    colors        = appTextFieldColors()
                 )
             }
 

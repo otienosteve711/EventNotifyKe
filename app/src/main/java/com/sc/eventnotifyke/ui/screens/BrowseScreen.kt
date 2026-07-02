@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +40,8 @@ fun BrowseScreen(
     var selectedZone     by remember { mutableStateOf("All") }
     var selectedCategory by remember { mutableStateOf("All") }
     var searchQuery      by remember { mutableStateOf("") }
-    var showSearch        by remember { mutableStateOf(false) }   // ← NEW: collapsed by default
+    var showSearch        by remember { mutableStateOf(false) }
+    var showFilters       by remember { mutableStateOf(false) }
 
     // ── Event state ───────────────────────────────────────────────────────────
     val eventState     by eventViewModel.eventState.collectAsState()
@@ -106,6 +108,16 @@ fun BrowseScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showFilters = !showFilters }) {
+                        Icon(
+                            imageVector        = Icons.Filled.FilterAlt,
+                            contentDescription = "Filters",
+                            tint               = if (showFilters)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(onClick = {
                         showSearch = !showSearch
                         if (!showSearch) searchQuery = ""
@@ -141,63 +153,66 @@ fun BrowseScreen(
                 .padding(paddingValues)
         ) {
 
-            // ── Zone filter chips ─────────────────────────────────────────────
-            Text(
-                text     = "Zone",
-                style    = MaterialTheme.typography.labelMedium,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-            LazyRow(
-                contentPadding        = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.fillMaxWidth()
-            ) {
-                items(allZones) { zone ->
-                    FilterChip(
-                        selected = selectedZone == zone,
-                        onClick  = { selectedZone = zone },
-                        label    = { Text(zone, style = MaterialTheme.typography.labelSmall) },
-                        colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor     = MaterialTheme.colorScheme.onPrimary,
-                            containerColor         = MaterialTheme.colorScheme.surface,
-                            labelColor             = MaterialTheme.colorScheme.onSurface
+            // ── Filter chips (Zone + Category) — collapsible ─────────────────────
+            if (showFilters) {
+                // ── Zone filter chips ─────────────────────────────────────────────
+                Text(
+                    text     = "Zone",
+                    style    = MaterialTheme.typography.labelMedium,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier              = Modifier.fillMaxWidth()
+                ) {
+                    items(allZones) { zone ->
+                        FilterChip(
+                            selected = selectedZone == zone,
+                            onClick  = { selectedZone = zone },
+                            label    = { Text(zone, style = MaterialTheme.typography.labelSmall) },
+                            colors   = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor     = MaterialTheme.colorScheme.onPrimary,
+                                containerColor         = MaterialTheme.colorScheme.surface,
+                                labelColor             = MaterialTheme.colorScheme.onSurface
+                            )
                         )
-                    )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            // ── Category filter chips ─────────────────────────────────────────
-            Text(
-                text     = "Category",
-                style    = MaterialTheme.typography.labelMedium,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-            LazyRow(
-                contentPadding        = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.fillMaxWidth()
-            ) {
-                items(categories) { cat ->
-                    FilterChip(
-                        selected = selectedCategory == cat,
-                        onClick  = { selectedCategory = cat },
-                        label    = { Text(cat, style = MaterialTheme.typography.labelSmall) },
-                        colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.tertiary,
-                            selectedLabelColor     = MaterialTheme.colorScheme.onTertiary,
-                            containerColor         = MaterialTheme.colorScheme.surface,
-                            labelColor             = MaterialTheme.colorScheme.onSurface
+                // ── Category filter chips ─────────────────────────────────────────
+                Text(
+                    text     = "Category",
+                    style    = MaterialTheme.typography.labelMedium,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier              = Modifier.fillMaxWidth()
+                ) {
+                    items(categories) { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick  = { selectedCategory = cat },
+                            label    = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                            colors   = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                selectedLabelColor     = MaterialTheme.colorScheme.onTertiary,
+                                containerColor         = MaterialTheme.colorScheme.surface,
+                                labelColor             = MaterialTheme.colorScheme.onSurface
+                            )
                         )
-                    )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // ── Results count ─────────────────────────────────────────────────
             Row(
