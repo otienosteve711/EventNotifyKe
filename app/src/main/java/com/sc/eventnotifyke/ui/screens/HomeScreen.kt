@@ -11,6 +11,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +32,7 @@ import com.sc.eventnotifyke.models.EventItem
 import com.sc.eventnotifyke.models.EventStatus
 import com.sc.eventnotifyke.navigation.Screen
 import com.sc.eventnotifyke.ui.components.AppBottomBar
+import com.sc.eventnotifyke.utils.eventCategoriesWithAll
 import com.sc.eventnotifyke.utils.zoneNeighborhoods
 import com.sc.eventnotifyke.viewmodel.AuthViewModel
 import com.sc.eventnotifyke.viewmodel.EventState
@@ -63,11 +65,9 @@ fun HomeScreen(
     var selectedCategory     by remember { mutableStateOf("All") }
     var searchQuery          by remember { mutableStateOf("") }
     var showSearch           by remember { mutableStateOf(false) }
+    var showFilters          by remember { mutableStateOf(false) }
 
-    val categories = listOf(
-        "All", "Music", "Sports", "Food", "Church",
-        "Community", "Arts", "Business", "Education"
-    )
+    val categories = eventCategoriesWithAll   // sourced from utils/EventCategories.kt
 
     // ── Set zone filter + load on first launch ────────────────────────────────
     LaunchedEffect(userZone) {
@@ -130,6 +130,16 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showFilters = !showFilters }) {
+                        Icon(
+                            imageVector        = Icons.Filled.FilterAlt,
+                            contentDescription = "Filters",
+                            tint               = if (showFilters)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(onClick = {
                         showSearch = !showSearch
                         if (!showSearch) searchQuery = ""
@@ -178,10 +188,12 @@ fun HomeScreen(
 
             // ── Greeting ──────────────────────────────────────────────────────
             profile?.let {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
                     Text(
                         text       = "Hey ${it.fullname.split(" ").first()} 👋",
-                        style      = MaterialTheme.typography.titleMedium,
+                        style      = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color      = MaterialTheme.colorScheme.onBackground
                     )
@@ -190,69 +202,72 @@ fun HomeScreen(
                             "Explore events in $userZone"
                         else
                             "Explore events in $selectedNeighborhood",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // ── Neighborhood filter chips ─────────────────────────────────────
-            Text(
-                text     = "Neighborhood",
-                style    = MaterialTheme.typography.labelMedium,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-            LazyRow(
-                contentPadding        = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.fillMaxWidth()
-            ) {
-                items(neighborhoods) { hood ->
-                    FilterChip(
-                        selected = selectedNeighborhood == hood,
-                        onClick  = { selectedNeighborhood = hood },
-                        label    = { Text(hood, style = MaterialTheme.typography.labelSmall) },
-                        colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor     = MaterialTheme.colorScheme.onPrimary,
-                            containerColor         = MaterialTheme.colorScheme.surface,
-                            labelColor             = MaterialTheme.colorScheme.onSurface
+            // ── Filter chips (Neighborhood + Category) — collapsible ─────────────
+            if (showFilters) {
+                // ── Neighborhood filter chips ─────────────────────────────────────
+                Text(
+                    text     = "Neighborhood",
+                    style    = MaterialTheme.typography.labelMedium,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier              = Modifier.fillMaxWidth()
+                ) {
+                    items(neighborhoods) { hood ->
+                        FilterChip(
+                            selected = selectedNeighborhood == hood,
+                            onClick  = { selectedNeighborhood = hood },
+                            label    = { Text(hood, style = MaterialTheme.typography.labelSmall) },
+                            colors   = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor     = MaterialTheme.colorScheme.onPrimary,
+                                containerColor         = MaterialTheme.colorScheme.surface,
+                                labelColor             = MaterialTheme.colorScheme.onSurface
+                            )
                         )
-                    )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            // ── Category filter chips ─────────────────────────────────────────
-            Text(
-                text     = "Category",
-                style    = MaterialTheme.typography.labelMedium,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-            LazyRow(
-                contentPadding        = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.fillMaxWidth()
-            ) {
-                items(categories) { cat ->
-                    FilterChip(
-                        selected = selectedCategory == cat,
-                        onClick  = { selectedCategory = cat },
-                        label    = { Text(cat, style = MaterialTheme.typography.labelSmall) },
-                        colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.tertiary,
-                            selectedLabelColor     = MaterialTheme.colorScheme.onTertiary,
-                            containerColor         = MaterialTheme.colorScheme.surface,
-                            labelColor             = MaterialTheme.colorScheme.onSurface
+                // ── Category filter chips ─────────────────────────────────────────
+                Text(
+                    text     = "Category",
+                    style    = MaterialTheme.typography.labelMedium,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier              = Modifier.fillMaxWidth()
+                ) {
+                    items(categories) { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick  = { selectedCategory = cat },
+                            label    = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                            colors   = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                selectedLabelColor     = MaterialTheme.colorScheme.onTertiary,
+                                containerColor         = MaterialTheme.colorScheme.surface,
+                                labelColor             = MaterialTheme.colorScheme.onSurface
+                            )
                         )
-                    )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // ── Events count header ───────────────────────────────────────────
             Row(
@@ -322,7 +337,7 @@ fun HomeScreen(
 
                     LazyColumn(
                         contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier            = Modifier.fillMaxSize()
                     ) {
                         items(filteredBySearch) { event ->
@@ -355,22 +370,11 @@ fun EventCard(
         modifier  = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape     = RoundedCornerShape(16.dp),
+        shape     = RoundedCornerShape(14.dp),
         colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-
-            // ── Event image ───────────────────────────────────────────────────
-            AsyncImage(
-                model              = event.imageUrl,
-                contentDescription = event.title,
-                contentScale       = ContentScale.Crop,
-                modifier           = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            )
 
             // ── Status banner (only for cancelled / postponed) ────────────────
             if (eventStatus != EventStatus.ACTIVE) {
@@ -381,89 +385,112 @@ fun EventCard(
                 }
                 val bannerLabel = when (eventStatus) {
                     EventStatus.CANCELLED -> "⚠ CANCELLED"
-                    EventStatus.POSTPONED -> "🕐 POSTPONED"
+                    EventStatus.POSTPONED -> "🕐 POSTPONED → ${event.formattedDate()}"
                     else                  -> ""
                 }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(bannerColor)
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text          = bannerLabel,
                         color         = Color.White,
                         fontWeight    = FontWeight.Bold,
-                        fontSize      = 11.sp,
+                        fontSize      = 10.sp,
                         letterSpacing = 1.sp
                     )
                 }
             }
 
-            Column(modifier = Modifier.padding(12.dp)) {
+            // ── Horizontal layout: thumbnail + details ─────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
 
-                // ── Category badge ────────────────────────────────────────────
-                Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    shape = RoundedCornerShape(6.dp)
-                ) {
+                // ── Thumbnail ────────────────────────────────────────────────
+                AsyncImage(
+                    model              = event.imageUrl,
+                    contentDescription = event.title,
+                    contentScale       = ContentScale.Crop,
+                    modifier           = Modifier
+                        .size(88.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                )
+
+                // ── Details ──────────────────────────────────────────────────
+                Column(modifier = Modifier.weight(1f)) {
+
+                    // Category + price row
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text     = event.category,
+                                style    = MaterialTheme.typography.labelSmall,
+                                color    = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                            )
+                        }
+                        Surface(
+                            color = if (event.isFree())
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text       = event.formattedPrice(),
+                                style      = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color      = if (event.isFree())
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier   = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Title
                     Text(
-                        text     = event.category,
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        text       = event.title,
+                        style      = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color      = MaterialTheme.colorScheme.onSurface,
+                        maxLines   = 1,
+                        overflow   = TextOverflow.Ellipsis
                     )
-                }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
-                // ── Title ─────────────────────────────────────────────────────
-                Text(
-                    text       = event.title,
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color      = MaterialTheme.colorScheme.onSurface,
-                    maxLines   = 2,
-                    overflow   = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // ── Date & time ───────────────────────────────────────────────
-                Text(
-                    text  = "${event.formattedDate()} • ${event.time}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                // ── Venue & neighborhood ──────────────────────────────────────
-                Text(
-                    text     = "${event.venue}, ${event.neighborhood}",
-                    style    = MaterialTheme.typography.bodySmall,
-                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // ── Price badge ───────────────────────────────────────────────
-                Surface(
-                    color = if (event.isFree())
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
+                    // Date & time
                     Text(
-                        text       = event.formattedPrice(),
-                        style      = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = if (event.isFree())
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        text     = "${event.formattedDate()} • ${event.time}",
+                        style    = MaterialTheme.typography.labelSmall,
+                        color    = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Venue & neighborhood
+                    Text(
+                        text     = "${event.venue}, ${event.neighborhood}",
+                        style    = MaterialTheme.typography.labelSmall,
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

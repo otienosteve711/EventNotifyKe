@@ -19,6 +19,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import com.sc.eventnotifyke.navigation.Screen
 import com.sc.eventnotifyke.ui.components.AppBottomBar
+import com.sc.eventnotifyke.utils.eventCategoriesWithAll
 import com.sc.eventnotifyke.utils.zoneNeighborhoods
 import com.sc.eventnotifyke.viewmodel.EventState
 import com.sc.eventnotifyke.viewmodel.EventViewModel
@@ -32,15 +33,13 @@ fun BrowseScreen(
     // ── All zones from ZoneData ───────────────────────────────────────────────
     val allZones = listOf("All") + zoneNeighborhoods.keys.toList()
 
-    val categories = listOf(
-        "All", "Music", "Sports", "Food", "Church",
-        "Community", "Arts", "Business", "Education"
-    )
+    val categories = eventCategoriesWithAll   // sourced from utils/EventCategories.kt
 
     // ── Local UI state ────────────────────────────────────────────────────────
     var selectedZone     by remember { mutableStateOf("All") }
     var selectedCategory by remember { mutableStateOf("All") }
     var searchQuery      by remember { mutableStateOf("") }
+    var showSearch        by remember { mutableStateOf(false) }   // ← NEW: collapsed by default
 
     // ── Event state ───────────────────────────────────────────────────────────
     val eventState     by eventViewModel.eventState.collectAsState()
@@ -48,7 +47,6 @@ fun BrowseScreen(
     val allEvents      by eventViewModel.filteredEvents.collectAsState()
 
     // ── Filter events for BrowseScreen locally ────────────────────────────────
-    // BrowseScreen shows ALL Nairobi events, filtered by zone + category + search
     val displayedEvents = remember(allEvents, selectedZone, selectedCategory, searchQuery) {
         allEvents.filter { event ->
             val zoneMatch = selectedZone == "All" || event.zone == selectedZone
@@ -65,7 +63,7 @@ fun BrowseScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            eventViewModel.setUserZone("")        // clear zone filter so all events load
+            eventViewModel.setUserZone("")
             eventViewModel.setNeighborhoodFilter("All")
             eventViewModel.setCategoryFilter("All")
             eventViewModel.loadActiveEvents()
@@ -76,12 +74,48 @@ fun BrowseScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text       = "Browse Events",
-                        style      = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.primary
-                    )
+                    if (showSearch) {
+                        TextField(
+                            value         = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder   = {
+                                Text(
+                                    "Search events, venues, areas…",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            singleLine = true,
+                            colors     = TextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedTextColor        = MaterialTheme.colorScheme.onBackground,
+                                unfocusedTextColor      = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                                focusedIndicatorColor   = MaterialTheme.colorScheme.primary,
+                                unfocusedIndicatorColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f),
+                                cursorColor             = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(
+                            text       = "Browse Events",
+                            style      = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        showSearch = !showSearch
+                        if (!showSearch) searchQuery = ""
+                    }) {
+                        Icon(
+                            imageVector        = Icons.Filled.Search,
+                            contentDescription = "Search",
+                            tint               = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor    = MaterialTheme.colorScheme.surface,
@@ -106,39 +140,6 @@ fun BrowseScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-
-            // ── Search bar ────────────────────────────────────────────────────
-            TextField(
-                value         = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder   = {
-                    Text(
-                        "Search events, venues, areas…",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector        = Icons.Filled.Search,
-                        contentDescription = "Search",
-                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                singleLine = true,
-                shape      = RoundedCornerShape(12.dp),
-                colors     = TextFieldDefaults.colors(
-                    focusedContainerColor   = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedTextColor        = MaterialTheme.colorScheme.onBackground,
-                    unfocusedTextColor      = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                    focusedIndicatorColor   = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f),
-                    cursorColor             = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
 
             // ── Zone filter chips ─────────────────────────────────────────────
             Text(

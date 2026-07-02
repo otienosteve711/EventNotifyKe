@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.firebase.Timestamp
 import com.sc.eventnotifyke.models.EventItem
 import com.sc.eventnotifyke.models.EventStatus
 import com.sc.eventnotifyke.navigation.Screen
@@ -41,11 +42,19 @@ fun MyEventsScreen(
     val allEvents      by eventViewModel.allEvents.collectAsState()
     val bookmarkedIds  by eventViewModel.bookmarkedEventIds.collectAsState()
 
-    val savedEvents = allEvents.filter { it.id in bookmarkedIds }
+    // Only show bookmarked events that are still upcoming.
+    // For postponed events, `date` already holds the new date, so this
+    // naturally keeps them visible as long as the new date hasn't passed.
+    val now = Timestamp.now()
+    val savedEvents = allEvents.filter {
+        it.id in bookmarkedIds && it.date >= now
+    }
 
-    // Real-time bookmark listener — attach once per userId
+    // Real-time bookmark listener — attach once userId is available
     LaunchedEffect(userId) {
-        eventViewModel.loadBookmarks(userId)
+        if (userId.isNotBlank()) {
+            eventViewModel.loadBookmarks(userId)
+        }
     }
 
     // Re-fetch all events every time this screen resumes (e.g. after bookmarking
@@ -166,8 +175,12 @@ fun SavedEventCard(
                         EventStatus.POSTPONED -> MaterialTheme.colorScheme.tertiary
                         else                  -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
+                    val statusText = if (eventStatus == EventStatus.POSTPONED)
+                        "POSTPONED → NEW DATE BELOW"
+                    else
+                        event.status.uppercase()
                     Text(
-                        text          = event.status.uppercase(),
+                        text          = statusText,
                         fontSize      = 10.sp,
                         fontWeight    = FontWeight.Bold,
                         color         = statusColor,
